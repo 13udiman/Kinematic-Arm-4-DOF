@@ -79,13 +79,33 @@
   <xacro:cylinder_link name="link_3" length="${L3}"/>
   <xacro:cylinder_link name="link_4" length="${L4}"/>
 
-  <!-- simple gripper -->
-  <link name="gripper">
+    <!-- GRIPPER BASE -->
+  <link name="gripper_base">
     <visual>
       <geometry>
-        <box size="0.05 0.05 0.05"/>
+        <box size="0.03 0.03 0.03"/>
       </geometry>
       <material name="orange"/>
+    </visual>
+  </link>
+
+  <!-- GRIPPER LEFT FINGER -->
+  <link name="gripper_left_finger">
+    <visual>
+      <geometry>
+        <box size="0.015 0.015 0.015"/>
+      </geometry>
+      <material name="black"/>
+    </visual>
+  </link>
+
+  <!-- GRIPPER RIGHT FINGER -->
+  <link name="gripper_right_finger">
+    <visual>
+      <geometry>
+        <box size="0.015 0.015 0.015"/>
+      </geometry>
+      <material name="black"/>
     </visual>
   </link>
 
@@ -163,17 +183,35 @@
   <!-- WRIST ROLL -->
   <joint name="joint_5" type="revolute">
     <parent link="link_4"/>
-    <child link="gripper"/>
+    <child link="gripper_base"/>
 
     <origin xyz="0 0 ${L4}"/>
 
     <!-- roll -->
-    <axis xyz="1 0 0"/>
+    <axis xyz="0 0 1"/>
 
     <limit lower="-3.14"
            upper="3.14"
            effort="10"
            velocity="1"/>
+  </joint>
+
+  <!-- GRIPPER LEFT FINGER -->
+  <joint name="gripper_left_finger_joint" type="prismatic">
+    <parent link="gripper_base"/>
+    <child link="gripper_left_finger"/>
+    <origin xyz="0.015 0 0.01"/>
+    <axis xyz="1 0 0"/>
+    <limit effort="5" lower="0" upper="0.03" velocity="0.02"/>
+  </joint>
+
+  <!-- GRIPPER RIGHT FINGER -->
+  <joint name="gripper_right_finger_joint" type="prismatic">
+    <parent link="gripper_base"/>
+    <child link="gripper_right_finger"/>
+    <origin xyz="-0.015 0 0.01"/>
+    <axis xyz="-1 0 0"/>
+    <limit effort="5" lower="0" upper="0.03" velocity="0.02"/>
   </joint>
 
   <ros2_control name="FakeSystem" type="system">
@@ -208,6 +246,18 @@
     </joint>
 
     <joint name="joint_5">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+
+    <joint name="gripper_left_finger_joint">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+
+    <joint name="gripper_right_finger_joint">
       <command_interface name="position"/>
       <state_interface name="position"/>
       <state_interface name="velocity"/>

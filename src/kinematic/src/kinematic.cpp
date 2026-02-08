@@ -21,18 +21,26 @@ public:
     sub_ = this->create_subscription<geometry_msgs::msg::Pose>("pose", 10,
         std::bind(&kinematic::PoseCallback, this, std::placeholders::_1)
     );
+    gripper_state_sub = this->create_subscription<std_msgs::msg::Int8>("gripper_state", 10,
+        std::bind(&kinematic::GripperCallback, this, std::placeholders::_1)
+    );
     controller_ = this->create_publisher<trajectory_msgs::msg::JointTrajectory>(
         "/joint_trajectory_controller/joint_trajectory", 10
     );
     feedback = this->create_publisher<std_msgs::msg::Int8>("feedback", 10);
-    }
+    };
 private:
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr pub_;
     rclcpp::Publisher<trajectory_msgs::msg::JointTrajectory>::SharedPtr controller_;
     rclcpp::Subscription<geometry_msgs::msg::Pose>::SharedPtr sub_;
+    rclcpp::Subscription<std_msgs::msg::Int8>::SharedPtr gripper_state_sub;
     rclcpp::Publisher<std_msgs::msg::Int8>::SharedPtr feedback;
     sensor_msgs::msg::JointState before;
     std_msgs::msg::Int8 feedback_msg;
+    
+    double right_finger_pos = 0.1;
+    double left_finger_pos = 0.1;
+
     double buffer[5];
 
     const double L1 = 0.05;
@@ -67,6 +75,23 @@ private:
             (t4 >= J4_MIN && t4 <= J4_MAX) &&
             (t5 >= J5_MIN && t5 <= J5_MAX);
     }
+
+    void GripperCallback(const std_msgs::msg::Int8::SharedPtr msg)
+    {
+        int gripper_command = msg->data;
+
+        if (gripper_command == 1 && right_finger_pos < 0.1 && left_finger_pos < 0.1) // Open gripper
+        {
+            right_finger_pos += 0.01;
+            left_finger_pos += 0.01;
+        }
+        else if (gripper_command == -1 && right_finger_pos > 0.0 && left_finger_pos > 0.0) // Close gripper
+        {
+            right_finger_pos -= 0.01;
+            left_finger_pos -= 0.01;
+        }
+
+    }
     
     void PoseCallback(const geometry_msgs::msg::Pose::SharedPtr msg)
     {
@@ -75,9 +100,9 @@ private:
         double z = msg->position.z;
 
         double roll, pitch, yaw, w;
-        roll = msg->orientation.x;
-        pitch = msg->orientation.y;
-        yaw = msg->orientation.z;
+        roll = msg->orientation.x * M_PI/180.0;
+        pitch = msg->orientation.y * M_PI/180.0;
+        yaw = msg->orientation.z * M_PI/180.0;
         w = msg->orientation.w;
 
         // =============================
@@ -116,7 +141,7 @@ private:
         // Elbow DOWN solution
         // =============================
         
-        double theta3 = M_PI - atan2(-sqrt(1 - D*D), -D);
+        double theta3 = M_PI - atan2(sqrt(1 - D*D), -D);
         double theta2 = atan2(r, s) - atan2(L3 * sin(theta3), L2 + L3*cos(theta3));
 
         // =============================
@@ -138,31 +163,30 @@ private:
         // =============================
         // Publish JointState
         // =============================
-        sensor_msgs::msg::JointState js;
+
         trajectory_msgs::msg::JointTrajectory traj;
-
-        js.header.stamp = now();
-
-        js.name = {
-            "joint_1",
-            "joint_2",
-            "joint_3",
-            "joint_4",
-            "joint_5"
+        traj.header.stamp = now();
+        traj.joint_names = {
+        "joint_1",
+        "joint_2",
+        "joint_3",
+        "joint_4",
+        "joint_5",
+        "gripper_left_finger_joint",
+        "gripper_right_finger_joint"
         };
-
-        js.position = {
+        trajectory_msgs::msg::JointTrajectoryPoint point;
+        point.positions = {
             theta1,
             theta2,
             theta3,
             theta4,
-            theta5
+            theta5,
+            left_finger_pos,
+            right_finger_pos
+            
         };
-
-        traj.joint_names = js.name;
-        trajectory_msgs::msg::JointTrajectoryPoint point;
-        point.positions = js.position;
-        point.time_from_start = rclcpp::Duration::from_seconds(0.1);
+        point.time_from_start = rclcpp::Duration::from_seconds(0.3);
         traj.points.push_back(point);
 
         controller_->publish(traj);
