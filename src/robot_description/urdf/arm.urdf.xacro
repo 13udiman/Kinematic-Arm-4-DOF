@@ -1,0 +1,218 @@
+<?xml version="1.0"?>
+<robot name="arm"
+       xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- ========================= -->
+  <!-- PROPERTIES -->
+  <!-- ========================= -->
+
+  <!-- link lengths -->
+  <xacro:property name="L1" value="0.05"/>
+  <xacro:property name="L2" value="0.3"/>
+  <xacro:property name="L3" value="0.3"/>
+  <xacro:property name="L4" value="0.10"/>
+
+  <!-- visual size -->
+  <xacro:property name="radius" value="0.03"/>
+
+  <!-- ========================= -->
+  <!-- MATERIALS -->
+  <!-- ========================= -->
+
+  <material name="blue">
+    <color rgba="0.2 0.4 0.8 1"/>
+  </material>
+
+  <material name="orange">
+    <color rgba="0.9 0.4 0.1 1"/>
+  </material>
+
+  <!-- ========================= -->
+  <!-- MACRO: CYLINDER LINK -->
+  <!-- ========================= -->
+
+  <xacro:macro name="cylinder_link" params="name length">
+
+    <link name="${name}">
+      <visual>
+        <!-- center-based geometry -->
+        <origin xyz="0 0 ${length/2}"/>
+        <geometry>
+          <cylinder radius="${radius}"
+                    length="${length}"/>
+        </geometry>
+        <material name="blue"/>
+      </visual>
+
+      <collision>
+        <origin xyz="0 0 ${length/2}"/>
+        <geometry>
+          <cylinder radius="${radius}"
+                    length="${length}"/>
+        </geometry>
+      </collision>
+
+    </link>
+
+  </xacro:macro>
+
+  <!-- ========================= -->
+  <!-- BASE -->
+  <!-- ========================= -->
+
+  <link name="base_link">
+    <visual>
+      <geometry>
+        <cylinder radius="0.06" length="0.05"/>
+      </geometry>
+      <material name="orange"/>
+    </visual>
+  </link>
+
+
+  <!-- ========================= -->
+  <!-- LINKS -->
+  <!-- ========================= -->
+
+  <xacro:cylinder_link name="link_1" length="${L1}"/>
+  <xacro:cylinder_link name="link_2" length="${L2}"/>
+  <xacro:cylinder_link name="link_3" length="${L3}"/>
+  <xacro:cylinder_link name="link_4" length="${L4}"/>
+
+  <!-- simple gripper -->
+  <link name="gripper">
+    <visual>
+      <geometry>
+        <box size="0.05 0.05 0.05"/>
+      </geometry>
+      <material name="orange"/>
+    </visual>
+  </link>
+
+
+  <!-- ========================= -->
+  <!-- JOINTS -->
+  <!-- ========================= -->
+
+  <!-- BASE ROTATION -->
+  <joint name="joint_1" type="revolute">
+    <parent link="base_link"/>
+    <child link="link_1"/>
+
+    <origin xyz="0 0 0.05"/>
+
+    <!-- rotate around Z -->
+    <axis xyz="0 0 1"/>
+
+    <limit lower="-3.14"
+           upper="3.14"
+           effort="20"
+           velocity="1"/>
+  </joint>
+
+
+  <!-- SHOULDER -->
+  <joint name="joint_2" type="revolute">
+    <parent link="link_1"/>
+    <child link="link_2"/>
+
+    <origin xyz="0 0 ${L1}"/>
+
+    <!-- pitch -->
+    <axis xyz="0 1 0"/>
+
+    <limit lower="-3.14"
+           upper="3.14"
+           effort="20"
+           velocity="1"/>
+  </joint>
+
+
+  <!-- ELBOW -->
+  <joint name="joint_3" type="revolute">
+    <parent link="link_2"/>
+    <child link="link_3"/>
+
+    <origin xyz="0 0 ${L2}"/>
+
+    <axis xyz="0 1 0"/>
+
+    <limit lower="-3.14"
+           upper="3.14"
+           effort="20"
+           velocity="1"/>
+  </joint>
+
+
+  <!-- WRIST PITCH -->
+  <joint name="joint_4" type="revolute">
+    <parent link="link_3"/>
+    <child link="link_4"/>
+
+    <origin xyz="0 0 ${L3}"/>
+
+    <axis xyz="0 1 0"/>
+
+    <limit lower="-3.14"
+           upper="3.14"
+           effort="10"
+           velocity="1"/>
+  </joint>
+
+
+  <!-- WRIST ROLL -->
+  <joint name="joint_5" type="revolute">
+    <parent link="link_4"/>
+    <child link="gripper"/>
+
+    <origin xyz="0 0 ${L4}"/>
+
+    <!-- roll -->
+    <axis xyz="1 0 0"/>
+
+    <limit lower="-3.14"
+           upper="3.14"
+           effort="10"
+           velocity="1"/>
+  </joint>
+
+  <ros2_control name="FakeSystem" type="system">
+
+    <hardware>
+      <plugin>mock_components/GenericSystem</plugin>
+      <param name="fake_sensor_commands">true</param>
+    </hardware>
+
+    <joint name="joint_1">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+
+    <joint name="joint_2">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+
+    <joint name="joint_3">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+
+    <joint name="joint_4">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+
+    <joint name="joint_5">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+
+  </ros2_control>
+
+</robot>
